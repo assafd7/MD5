@@ -1,6 +1,5 @@
 import socket
 from threading import Thread
-from protocol import recv, send
 
 QUEUE_SIZE = 10
 IP = '0.0.0.0'
@@ -8,8 +7,22 @@ PORT = 8080
 ranges = 100
 
 
-def found(msg):
-    return [msg[:5], msg[5:]]
+def send(msg, client_socket):
+    final_msg = str(len(msg)) + "#" + msg
+    client_socket.send(final_msg.encode())
+
+
+def recv(client_socket):
+    msg_len = ''
+    msg = ''
+    print(client_socket)
+    char = client_socket.recv(1).decode()
+    while char != "#":
+        msg_len += char
+        char = client_socket.recv(1).decode()
+    for a in range(int(msg_len)):
+        msg += client_socket.recv(1).decode()
+    return msg
 
 
 def handle_connection(client_socket, client_address):
@@ -22,13 +35,10 @@ def handle_connection(client_socket, client_address):
     global ranges
     try:
         print('New connection received from ' + client_address[0] + ':' + str(client_address[1]))
-        while True:
-            send(str(ranges), client_socket)
-            ranges += 10
-            print("range")
-            fnd = found(recv(client_socket))
-            if fnd[0] == "found":
-                print("found number " + fnd[1])
+        send(str(ranges), client_socket)
+        if recv(client_socket) == "found":
+            print("found")
+
     except socket.error as err:
         print('received socket exception - ' + str(err))
     finally:
@@ -49,6 +59,7 @@ def main():
             thread = Thread(target=handle_connection,
                             args=(client_socket, client_address))
             thread.start()
+            ranges += 10
     except socket.error as err:
         print('received socket exception - ' + str(err))
     finally:
